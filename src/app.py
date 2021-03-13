@@ -6,7 +6,6 @@ import pandas as pd
 import dash_table
 import dash_bootstrap_components as dbc
 from dash.dependencies import Input, Output, State
-from vega_datasets import data
 import plotly as py
 import plotly.express as px
 import plotly.graph_objects as go
@@ -121,7 +120,7 @@ app.layout = dbc.Container([
                     html.Label(['Street Address'], style={'color': '#0F5DB6', "font-weight": "bold"}
                     ),
                     html.Br(),
-                    dcc.Textarea(id='address', value='Time Education Inc'),
+                    html.Label(id='address'),  # Not capturing unit number
                     html.Br(),
                     html.Label(['Search Url'], style={'color': '#0F5DB6', "font-weight": "bold"}),
                     dcc.Textarea(style={'width': '100%', 'height': 30}),
@@ -160,8 +159,9 @@ app.layout = dbc.Container([
                         dbc.Card([
                             dbc.CardHeader('Key Insights:', 
                             style={'fontWeight': 'bold', 'color':'white','font-size': '22px', 'backgroundColor':'#0F5DB6', 'height': '50px'}),
-                            dbc.CardBody(id='highest_value_name', style={'color': '#2EC9F0', 'fontSize': 18,  'height': '70px'}),
-                            dbc.CardBody(id='insight-1', style={'color': '#522889', 'fontSize': 18,  'height': '380px'}),
+                            dbc.CardBody(id='insight-1', style={'color': '#2EC9F0', 'fontSize': 18,  'height': '70px'}),
+                            html.Br(),
+                            dbc.CardBody(id='insight-2', style={'color': '#522889', 'fontSize': 18,  'height': '380px'}),
                         ]),
                     ], md = 4),
                     dbc.Col([], md = 2),
@@ -199,12 +199,12 @@ def url_presence(business):
              Input('business-name', 'value'))
 def time_online(business):
     
-    website = 'www.google.com'
+    time_online = '356 days'
     # business_df = df.query('BusinessName == @business')
-    # website = business_df.iloc[-1, 'website']
-    if website:
-        insight = f"Website: {website}"
-    if website:
+    # domain_length = business_df.iloc[-1, 'time_online']
+    if time_online:
+        insight = f"The website has been online: {time_online}"
+    if time_online:
         insight = 'No website available'
     return insight
 
@@ -234,7 +234,7 @@ def plot_donut(score, business):
 
     return fig
 
-@app.callback(Output('address', 'value'),
+@app.callback(Output('address', 'children'),
              [Input('business-name', 'value')])
 def update_address(business):
     
