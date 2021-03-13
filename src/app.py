@@ -10,16 +10,10 @@ from vega_datasets import data
 import plotly as py
 import plotly.express as px
 import plotly.graph_objects as go
+from flask_sqlalchemy import SQLAlchemy
+from flask import Flask
 
 alt.data_transformers.disable_max_rows()
-
-########## Additional Data Filtering ###########################################
-# df = pd.read_csv('data/processed/business_data.csv', sep=';') #data/processed/cleaned_data.csv
-
-
-#display_df = display_df.rename(columns={'title': 'Title', 'variety':'Variety', 'state':'State', 'points':'Points', 'price':'Price'})
-###############################################################################
-
 
 def create_card(header='Header', content='Card Content'): 
     
@@ -49,22 +43,14 @@ def within_thresh(value, businesstype, column, data, sd_away=1):
     else: 
         return lower_thresh, upper_thresh, True
 
-
-app = dash.Dash(__name__ , external_stylesheets=[dbc.themes.BOOTSTRAP])
-# Set the app title
-app.title = "Fraudulent Buisness Detection"
-from flask_sqlalchemy import SQLAlchemy
-from flask import Flask
-
-
-
 server = Flask(__name__)
-app = dash.Dash(__name__,server=server,  external_stylesheets=['https://codepen.io/chriddyp/pen/bWLwgP.css'])
+app = dash.Dash(__name__ , external_stylesheets=[dbc.themes.BOOTSTRAP], server=server)
+app.title = "Fraudulent Business Detection"
+
 app.server.config['SQLALCHEMY_DATABASE_URI'] = "postgres+psycopg2://postgres:one-percent@130.211.113.135:5432/postgres"
 app.server.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app.server)
-
 
 class Licence(db.Model):
     __tablename__ = "license_data"
