@@ -175,68 +175,114 @@ app.layout = dbc.Container([
         dbc.Col([collapse])
     ], style={'backgroundColor': '#0F5DB6', 'border-radius': 3, 'padding': 15, 'margin-top': 22, 'margin-bottom': 22, 'margin-right': 11}),
 
-    dbc.Row([
-        dbc.Col([
-            html.Br(),
-            html.Label(['Company Name'], style={'color': '#0F5DB6', "font-weight": "bold"}),
-            dcc.Textarea(
-                id='business-name',
-                style={'width': '100%', 'height': 30},
-                placeholder='Select a State',
-                value = 'Time Education Inc'
-            ),
-            html.Br(),
-            html.Label(['Street Address'], style={'color': '#0F5DB6', "font-weight": "bold"}
-            ),
-            dcc.Textarea(id='address', value='Time Education Inc'),
-            dcc.Dropdown(
-                id='wine_variety',
-                value='select a variety', 
-                placeholder='Select a Variety', 
-                multi=True
-            ),
-            html.Br(),
-            html.Label(['Search Url'], style={'color': '#0F5DB6', "font-weight": "bold"}),
-            dcc.Textarea(style={'width': '100%', 'height': 30}),
-            dbc.Button('Web Search', id = 'scrape-btn', n_clicks=0, className='reset-btn-1'),
-        ], style={'border': '1px solid', 'border-radius': 3, 'padding': 15, 'margin-top': 22, 'margin-bottom': 15, 'margin-right': 0, 'height' : 350}, md=4,
-        ),
-        dbc.Col([], md=1),
-        dbc.Col([
-            html.Br(),
-            html.Br(),
-            dbc.Row([create_card(None, 'This is where the score will go')]),
-            html.Br(),
-            dbc.Row([create_card(None, 'This will be the number of outlier pts')]),
-        ], md = 2),
-        dbc.Col([
-            dcc.Graph(id='pie-chart',figure = {'layout': go.Layout(margin={'b': 0})})
-        ])
-    ]),
-    dbc.Row([
-        dbc.Col([
-            dbc.Card([
-                dbc.CardHeader('Key Insights:', 
-                style={'fontWeight': 'bold', 'color':'white','font-size': '22px', 'backgroundColor':'#0F5DB6', 'height': '50px'}),
-                dbc.CardBody(id='highest_value_name', style={'color': '#2EC9F0', 'fontSize': 18,  'height': '70px'}),
-                dbc.CardBody(
-                    id='highest_value', style={'color': '#522889', 'fontSize': 18,  'height': '380px'}),
-            ]),
-        ], md = 4),
-        dbc.Col([], md = 2),
-        dbc.Col([
-            dbc.Row([dcc.Graph(id='histogram')]),
-            dcc.Dropdown(
-                    id='feature_type',
-                    value='select a feature',
-                    options = [{'label': col, 'value': col} for col in df.columns],
-                    placeholder='Select a Feature', 
-                    multi=False
-            ),
-        html.Br(), 
-        ],md = 6),
-    ]),
-])
+    # dcc.Tabs([
+        dcc.Tab([
+            dbc.Row([
+                dbc.Col([
+                    html.Br(),
+                    html.Label([
+                        'Company Name'], style={
+                'color': '#0F5DB6', "font-weight": "bold"
+            }),
+                    dcc.Textarea(
+                        id='business-name',
+                        style={'width': '100%', 'height': 30},
+                        placeholder='Select a State',
+                        value = 'Time Education Inc'
+
+                    ),
+                    html.Br(),
+                    html.Label(['Street Address'], style={'color': '#0F5DB6', "font-weight": "bold"}
+                    ),
+                    html.Br(),
+                    dcc.Textarea(id='address', value='Time Education Inc'),
+                    html.Br(),
+                    html.Label(['Search Url'], style={'color': '#0F5DB6', "font-weight": "bold"}),
+                    dcc.Textarea(style={'width': '100%', 'height': 30}),
+                    dbc.Button('Web Search', id = 'scrape-btn', n_clicks=0, className='reset-btn-1'),
+                    ], style={'border': '1px solid', 'border-radius': 3, 'padding': 15, 'margin-top': 22, 'margin-bottom': 15, 'margin-right': 0, 'height' : 350}, md=4,
+                ),
+                dbc.Col([], md=1),
+                dbc.Col([
+                    html.Br(),
+                    html.Br(),
+                    dbc.Row([create_card(None, 'This is where the score will go')]),
+                    html.Br(),
+                    dbc.Row([create_card(None,'This will be the number of outlier pts')]),
+                ], md = 2),
+                dbc.Col([
+                    dcc.Graph(id='pie-chart',
+                             figure = {'layout': go.Layout(margin={'b': 0})})
+                ],)
+
+
+                # dbc.Col([
+                #         html.Br(),
+                #         html.Br(),
+                #         dbc.Row([create_card('card1', 'card 1 content')]),
+                #         dbc.Row([create_card('Card2','Card 2 Content')]),
+                #     ], md=2),
+                # dbc.Col([
+                #      html.Br(),
+                #      html.Br(),
+                #      dbc.Row([create_card('card3', 'card3 content')]),
+                #      dbc.Row([create_card('Card4','Card 4 Content')]),
+                #     ], md=4)
+                ]),
+            dbc.Row([
+                    dbc.Col([
+                        dbc.Card([
+                            dbc.CardHeader('Key Insights:', 
+                            style={'fontWeight': 'bold', 'color':'white','font-size': '22px', 'backgroundColor':'#0F5DB6', 'height': '50px'}),
+                            dbc.CardBody(id='highest_value_name', style={'color': '#2EC9F0', 'fontSize': 18,  'height': '70px'}),
+                            dbc.CardBody(id='insight-1', style={'color': '#522889', 'fontSize': 18,  'height': '380px'}),
+                        ]),
+                    ], md = 4),
+                    dbc.Col([], md = 2),
+                    dbc.Col([
+                    dbc.Row([
+                            dcc.Graph(id='histogram'),         
+                        ]),
+                        dcc.Dropdown(
+                                id='feature_type',
+                                value='select a feature',
+                                options = [{'label': col, 'value': col} for col in df.columns],
+                                placeholder='Select a Feature', 
+                                multi=False
+                            ),
+                    html.Br(), 
+                    ],md = 6),
+                ]),
+            ], label='MDS Winery'),
+    ])
+
+
+@app.callback(Output('insight-1', 'children'),
+             Input('business-name', 'value'))
+def url_presence(business):
+    website = 'www.google.com'
+    # business_df = df.query('BusinessName == @business')
+    # website = business_df.iloc[-1, 'website']
+    if website:
+        insight = f"Website: {website}"
+    if website:
+        insight = 'No website available'
+    return insight
+
+@app.callback(Output('insight-2', 'children'),
+             Input('business-name', 'value'))
+def time_online(business):
+    
+    website = 'www.google.com'
+    # business_df = df.query('BusinessName == @business')
+    # website = business_df.iloc[-1, 'website']
+    if website:
+        insight = f"Website: {website}"
+    if website:
+        insight = 'No website available'
+    return insight
+
+
 
 def calculate_scores(business):
     scores = ['green', 'green', 'green', 'red']
