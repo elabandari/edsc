@@ -325,7 +325,7 @@ def address_frequency(business):
     address_f = address_frequencies_df[address_frequencies_df.full_adress == address_text]['BusinessName'].iat[0]
 
     if stats.percentileofscore(address_frequencies_df.BusinessName.values, address_f) >= 99:
-        return f'This address has {address_f} businesses listed at it. That is abnormally high'
+        return f'This address has {address_f} businesses listed at it. That is in the top 1%'
     else:
         return f'This address has {address_f} businesses listed at it'
 
