@@ -183,7 +183,7 @@ app.layout = dbc.Container([
                         dcc.Dropdown(
                                 id='feature_type',
                                 value='Number of Employees',
-                                options = [{'label': col, 'value': col} for col in ['Fee Paid', 'Number of Employees', 'Total Fees Paid']],
+                                options = [{'label': col, 'value': col} for col in ['Fee Paid', 'Number of Employees', 'Total Fees Paid', 'Missing Values']],
                                 placeholder='Select a Feature', 
                                 multi=False
                             ),
@@ -302,7 +302,9 @@ def update_address(business):
              Input('business-name', 'value'),
              Input('std', 'value')])
 def plot_hist(xaxis, business,sd):
-    
+
+    xrange = None
+    ci_color = 'black'
     business_df = df.query('BusinessName == @business')
     type_value = business_df.iloc[0, 9]
 
@@ -321,23 +323,41 @@ def plot_hist(xaxis, business,sd):
         estimate = business_df.iloc[-1, index]
         hist_data = df.query('BusinessType == @type_value').loc[:, xaxis]
         lower_thresh, upper_thresh, _ = within_thresh(estimate, type_value, xaxis, df, sd)
+
     elif xaxis == 'Total Fees Paid':
         estimate = df.groupby('BusinessName').sum().loc[business, "FeePaid"]
         hist_data = df.groupby('BusinessName').sum().loc[:, 'FeePaid']
         lower_thresh, upper_thresh, _ = within_thresh(estimate, type_value, xaxis, df, sd)
         xaxis = 'FeePaid'
-    print(xaxis)
-    xrange = None
+        print(xaxis)
+        xrange=[0, 15000]
+
+    elif xaxis == 'Missing Values':
+        business_df['Average Number of Missing Values'] = business_df.isnull().sum(axis=1)
+        estimate = business_df.loc[:,'Average Number of Missing Values'].sum()/business_df.loc[:,'Average Number of Missing Values'].mean()
+        missing_df = pd.DataFrame.copy(df)
+        missing_df['Average Number of Missing Values'] = df.isnull().sum(axis=1)
+        total_missing = missing_df.groupby('BusinessName').sum().loc[:,'Average Number of Missing Values']
+        count_reports = missing_df.groupby('BusinessName').count().loc[:,'Average Number of Missing Values']
+        hist_data = total_missing/count_reports
+        xaxis = 'Average Number of Missing Values'
+        lower_thresh = estimate
+        upper_thresh = estimate
+        ci_color = 'red'
+
+
     fig = px.histogram(hist_data, x = xaxis,height=400)
     fig.update_xaxes(range=xrange)
     fig.update_layout(shapes=[
         dict(
         type= 'line',
+        line_color = ci_color,
         yref= 'paper', y0= 0, y1= 1,
         xref= 'x', x0= lower_thresh, x1= lower_thresh
         ),
         dict(
         type= 'line',
+        line_color = ci_color,
         yref= 'paper', y0= 0, y1= 1,
         xref= 'x', x0= upper_thresh, x1=upper_thresh
         ),
