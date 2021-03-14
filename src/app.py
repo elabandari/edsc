@@ -6,19 +6,21 @@ import pandas as pd
 import dash_table
 import dash_bootstrap_components as dbc
 from dash.dependencies import Input, Output, State
-from datetime import datetime
+from datetime import datetime, timedelta
 import plotly as py
 import plotly.express as px
 import plotly.graph_objects as go
+from flask_sqlalchemy import SQLAlchemy
+from flask import Flask
+from scipy import stats
 
 alt.data_transformers.disable_max_rows()
 
 ########## Additional Data Filtering ###########################################
 df = pd.read_csv('data/processed/business_data.csv', sep=';') #data/processed/cleaned_data.csv
 
-
-#display_df = display_df.rename(columns={'title': 'Title', 'variety':'Variety', 'state':'State', 'points':'Points', 'price':'Price'})
 ###############################################################################
+
 
 
 def create_card(header='Header', content='Card Content'): 
@@ -45,9 +47,8 @@ def within_thresh(value, businesstype, column, data, sd_away=1):
     sd_df = data.groupby('BusinessType').std()
     
     mean = mean_df.loc[businesstype, column]
-    sd = sd_df.loc[businesstype, column]
+    sd = float(sd_df.loc[businesstype, column])
     
-    print(mean)
     upper_thresh = mean + sd_away*sd 
     lower_thresh = mean - sd_away*sd
 
@@ -58,6 +59,20 @@ def within_thresh(value, businesstype, column, data, sd_away=1):
         return lower_thresh, upper_thresh, False
     else: 
         return lower_thresh, upper_thresh, True
+
+
+server = Flask(__name__)
+app = dash.Dash(__name__ , external_stylesheets=[dbc.themes.BOOTSTRAP], server=server)
+app.title = "Fraudulent Business Detection"
+app.server.config['SQLALCHEMY_DATABASE_URI'] = "postgres+psycopg2://postgres:one-percent@130.211.113.135:5432/postgres"
+app.server.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+db = SQLAlchemy(app.server)
+
+jb_emp_post = pd.read_sql_table('jobbank_employer_posting', con=db.engine)
+jb_emp_post = jb_emp_post.rename(columns={'business_name': 'BusinessName'})
+
+# business_info = pd.read_sql_table('business_info', con=db.engine)
+# business_info = business_info.rename(columns={'business_name': 'BusinessName'})
 
 
 app = dash.Dash(__name__ , external_stylesheets=[dbc.themes.BOOTSTRAP])
@@ -120,8 +135,9 @@ app.layout = dbc.Container([
                         'Company Name'], style={
                 'color': '#0F5DB6', "font-weight": "bold"
             }),
-                    dcc.Textarea(
+                    dcc.Dropdown(
                         id='business-name',
+                        options=[{'label': name, 'value': name} for name in list(df['BusinessName'].dropna().unique())],
                         style={'width': '100%', 'height': 30},
                         placeholder='Select a State',
                         value = 'Time Education Inc'
@@ -142,7 +158,11 @@ app.layout = dbc.Container([
                 dbc.Col([
                     html.Br(),
                     html.Br(),
-                    dbc.Row([create_card(None, 'This is where the score will go')]),
+                    dbc.Row([dbc.Card([
+                        dbc.CardHeader('Features Beyond 1-SD away from mean'),
+                        dbc.CardBody(id='score', style={'color': '#0F5DB6', 'fontSize': 18,  'height': '70px'}),
+                    ]
+                    )]),
                     html.Br(),
                     dbc.Row([create_card(None,'This will be the number of outlier pts')]),
                 ], md = 2),
@@ -150,29 +170,15 @@ app.layout = dbc.Container([
                     dcc.Graph(id='pie-chart',
                              figure = {'layout': go.Layout(margin={'b': 0})})
                 ],)
-
-
-                # dbc.Col([
-                #         html.Br(),
-                #         html.Br(),
-                #         dbc.Row([create_card('card1', 'card 1 content')]),
-                #         dbc.Row([create_card('Card2','Card 2 Content')]),
-                #     ], md=2),
-                # dbc.Col([
-                #      html.Br(),
-                #      html.Br(),
-                #      dbc.Row([create_card('card3', 'card3 content')]),
-                #      dbc.Row([create_card('Card4','Card 4 Content')]),
-                #     ], md=4)
                 ]),
             dbc.Row([
                     dbc.Col([
                         dbc.Card([
                             dbc.CardHeader('Key Insights:', 
                             style={'fontWeight': 'bold', 'color':'white','font-size': '22px', 'backgroundColor':'#0F5DB6', 'height': '50px'}),
-                            dbc.CardBody(id='insight-1', style={'color': '#2EC9F0', 'fontSize': 18,  'height': '70px'}),
+                            dbc.CardBody(id='insight-1', style={'color': '#0F5DB6', 'fontSize': 18,  'height': '70px'}),
                             html.Br(),
-                            dbc.CardBody(id='insight-2', style={'color': '#522889', 'fontSize': 18,  'height': '380px'}),
+                            dbc.CardBody(id='insight-2', style={'color': '#0F5DB6', 'fontSize': 18,  'height': '380px'}),
                         ]),
                     ], md = 4),
                     dbc.Col([], md = 2),
@@ -197,7 +203,7 @@ app.layout = dbc.Container([
                     html.Br(), 
                     ],md = 6),
                 ]),
-            ], label='MDS Winery'),
+            ]),
     ])
 
 
@@ -257,14 +263,56 @@ def website_online(business):
 
 
 def calculate_scores(business):
-
+    business = 'Time Education Inc'
+    toy3 = {'BusinessName':"Time Education Inc", 'num_posting' : '0'}
+    toy1 = {'BusinessName':"Time Education Inc", 'url' : 'www.google.ca'}
+    toy2 = {'url' : 'www.google.ca', 'register_date' : '1999-01-02', 'expire_date': '2022-09-29'}
+    url_df = pd.DataFrame(toy1, index=[1])
+    url_info = pd.DataFrame(toy2, index=[1])
+    jb_emp_post = pd.DataFrame(toy3, index=[1])
+    filtered_url_df = url_df.query('BusinessName == @business')
     # has registered website
     # longevity of website
     # has more than 1 employee
     # number of missing inputs 
 
+    ###############################
+    # length of time online 
 
-    scores = ['green', 'green', 'green', 'red']
+    if url_df.loc[1,'url'] == url_df.loc[1,'url']:  # checks if nan 
+        url_color = 'green'
+    else: 
+        url_color = 'red'
+    
+    url = url_df.loc[1, 'url']
+    url_time_df =url_info.query('url == @url')
+    url_time_df = url_time_df.set_index('url')
+    reg_time = pd.to_datetime(url_time_df.loc[url, 'register_date'])
+    exp_time = pd.to_datetime(url_time_df.loc[url, 'expire_date'])
+    time_diff = exp_time - reg_time
+
+    if time_diff < timedelta(7) or url_color == 'red':
+        longevity_color = 'red'
+    elif time_diff < timedelta(365):
+        longevity_color = 'yellow'
+    else:
+        longevity_color='green'
+
+    ##############################
+    # Job Posting
+
+    jb_emp_post = pd.merge(df, jb_emp_post, how='left', on='BusinessName')
+    num_posting = jb_emp_post.query('BusinessName == @business').iloc[0,-1]
+    print(num_posting)
+
+    if int(num_posting) > 0:
+        job_post_color = 'green'
+    else:
+        job_post_color = 'red'
+
+    #############################
+
+    scores = [url_color, longevity_color, job_post_color, 'red']
     return scores
 
 @app.callback(Output('pie-chart', 'figure'),
@@ -273,7 +321,7 @@ def calculate_scores(business):
 def plot_donut(score, business):
 
     score_list = calculate_scores(business)
-    df_dict = {'feat': ['physical', 'online', 'government', 'other'],
+    df_dict = {'feat': ['website', 'reviews', 'job posting', 'other'],
            'size': [25, 25 ,25,25],
            'score' : score_list}
 
@@ -292,47 +340,69 @@ def plot_donut(score, business):
 def update_address(business):
     
     business_df = df.query('BusinessName == @business')
-    house = business_df.iloc[-1, 13]
-    street = business_df.iloc[-1, 14]
+    if business_df.iloc[-1, 13] == business_df.iloc[-1, 13]:
+        house = str(int(business_df.iloc[-1, 13]))
+    else: 
+        house = ''
+    if business_df.iloc[-1, 14] == business_df.iloc[-1, 14]:
+        street = str(business_df.iloc[-1, 14])
+    else: 
+        street = ''
+        
+    if business_df.iloc[-1, 11] == business_df.iloc[-1, 11]:
+        house = business_df.iloc[-1, 11] + " " + house
     
-    return str(int(house))+ ' ' +street
+    return  house + ' ' + street
 
 @app.callback(Output("histogram", "figure"),
              [Input('feature_type', 'value'),
              Input('business-name', 'value'),
              Input('std', 'value')])
 def plot_hist(xaxis, business,sd):
-
+ 
     xrange = None
     ci_color = 'black'
     business_df = df.query('BusinessName == @business')
     type_value = business_df.iloc[0, 9]
+    business_join = pd.merge(business_info, df, how='left', on='BusinessName')
 
     if sd == '':
         sd = 1
 
     if xaxis == 'Fee Paid':
-        xaxis = 'FeePaid'
+        clean_name = 'Fees Paid'
+        xaxis = 'FeePaid by'
         index = -3
         estimate = business_df.iloc[-1, index] # use -4 for employees, -3 for FeesPaid
         hist_data = df.query('BusinessType == @type_value').loc[:, xaxis]
         lower_thresh, upper_thresh, _ = within_thresh(estimate, type_value, xaxis, df, sd)
+        xrange=[0, upper_thresh*1.25]
+
     elif xaxis == 'Number of Employees':
+        clean_name = 'Number of Employees at'
         xaxis = 'NumberofEmployees'
         index = -4
         estimate = business_df.iloc[-1, index]
         hist_data = df.query('BusinessType == @type_value').loc[:, xaxis]
         lower_thresh, upper_thresh, _ = within_thresh(estimate, type_value, xaxis, df, sd)
-
+        xrange=[0, upper_thresh*1.25]
+        
     elif xaxis == 'Total Fees Paid':
+        clean_name = 'Total Fees Paid by'
         estimate = df.groupby('BusinessName').sum().loc[business, "FeePaid"]
         hist_data = df.groupby('BusinessName').sum().loc[:, 'FeePaid']
         lower_thresh, upper_thresh, _ = within_thresh(estimate, type_value, xaxis, df, sd)
         xaxis = 'FeePaid'
-        print(xaxis)
-        xrange=[0, 15000]
+        xrange=[0, upper_thresh*1.25]
+    
+   # elif xaxis == 'turnover':
+        # business_info.query('BusinessName == @business')
+        # estimate = business_df.iloc[-1, 2]
+        # hist_data = df.query('BusinessType == @type_value')
+       #estimate = business_join.groupby('BusinessName')
 
     elif xaxis == 'Missing Values':
+        clean_name = 'Missing Values in'
         business_df['Average Number of Missing Values'] = business_df.isnull().sum(axis=1)
         estimate = business_df.loc[:,'Average Number of Missing Values'].sum()/business_df.loc[:,'Average Number of Missing Values'].mean()
         missing_df = pd.DataFrame.copy(df)
@@ -366,9 +436,46 @@ def plot_hist(xaxis, business,sd):
         line_color='red',
         yref= 'paper', y0= 0, y1= 1,
         xref= 'x', x0= estimate, x1=estimate
-        )
-    ])
+        ),
+    ], title=f"Distribution of {clean_name} {type_value} companies"
+    )
     return fig
+
+@app.callback(Output("score", "children"),
+             [Input('feature_type', 'value'),
+             Input('business-name', 'value'),
+             Input('std', 'value')])
+def count_sigs(xaxis, business,sd):
+    business_df = df.query('BusinessName == @business')
+    type_value = business_df.iloc[0, 9]
+    featlist = ['FeePaid', 'NumberofEmployees', 'Total Fees Paid']
+
+    sd = 1
+
+    for feat in featlist:
+
+        if feat == 'FeePaid':
+            index = -3
+            estimate = business_df.iloc[-1, index] # use -4 for employees, -3 for FeesPaid
+            hist_data = df.query('BusinessType == @type_value').loc[:, feat]
+            _, __, containsFee = within_thresh(estimate, type_value, feat, df, sd)
+
+        elif feat == 'NumberofEmployees':
+            index = -4
+            estimate = business_df.iloc[-1, index]
+            hist_data = df.query('BusinessType == @type_value').loc[:, feat]
+            _, __, containsEmp= within_thresh(estimate, type_value, feat, df, sd)
+            
+        elif feat == 'Total Fees Paid':
+            estimate = df.groupby('BusinessName').sum().loc[business, "FeePaid"]
+            hist_data = df.groupby('BusinessName').sum().loc[:, 'FeePaid']
+            _, __, containstotfee = within_thresh(estimate, type_value, feat, df, sd)
+
+    sum_score = containsFee + containsEmp + containstotfee
+    output = len(featlist) - sum_score
+    return output
+
+
 
 
 # last year that they gave info to public 
