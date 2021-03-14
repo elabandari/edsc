@@ -6,6 +6,7 @@ import pandas as pd
 import dash_table
 import dash_bootstrap_components as dbc
 from dash.dependencies import Input, Output, State
+from datetime import datetime
 import plotly as py
 import plotly.express as px
 import plotly.graph_objects as go
@@ -34,15 +35,25 @@ def within_thresh(value, businesstype, column, data, sd_away=1):
     '''returns the lower and upper thresholds and whether the input
        falls within this threshold
     '''
+    if column == 'Total Fees Paid':
+        a = data.groupby('BusinessName').sum().reset_index()
+        b = data.loc[:,['BusinessName','BusinessType']]
+        data = pd.merge(a, b, how="left", on="BusinessName").drop_duplicates()
+        column = 'FeePaid'
+
     mean_df = data.groupby('BusinessType').mean()
     sd_df = data.groupby('BusinessType').std()
     
     mean = mean_df.loc[businesstype, column]
     sd = sd_df.loc[businesstype, column]
     
+    print(mean)
     upper_thresh = mean + sd_away*sd 
     lower_thresh = mean - sd_away*sd
-    
+
+    if lower_thresh < 0:
+        lower_thresh = 0 
+
     if value > upper_thresh or value < lower_thresh: 
         return lower_thresh, upper_thresh, False
     else: 
@@ -171,9 +182,16 @@ app.layout = dbc.Container([
                         ]),
                         dcc.Dropdown(
                                 id='feature_type',
-                                value='select a feature',
-                                options = [{'label': col, 'value': col} for col in df.columns],
+                                value='Number of Employees',
+                                options = [{'label': col, 'value': col} for col in ['Fee Paid', 'Number of Employees', 'Total Fees Paid']],
                                 placeholder='Select a Feature', 
+                                multi=False
+                            ),
+                        dcc.Dropdown(
+                                id='std',
+                                options = [{'label': col, 'value': col} for col in [1,2,3]],
+                                placeholder='Select a standard dev', 
+                                value='',
                                 multi=False
                             ),
                     html.Br(), 
@@ -198,8 +216,37 @@ def url_presence(business):
 @app.callback(Output('insight-2', 'children'),
              Input('business-name', 'value'))
 def time_online(business):
+    toy1 = {'BusinessName':"Time Education Inc", 'url' : 'www.google.ca'}
+    toy2 = {'url' : 'www.google.ca', 'register_date' : '1999-01-02', 'expire_date': '2022-09-29'}
+
+    url_df = pd.DataFrame(toy1, index=[1])
+    url_info = pd.DataFrame(toy2, index=[1])
+
+    filtered_url_df = url_df.query('BusinessName == @business')
+    url = url_df.loc[1, 'url']
+    url_time_df =url_info.query('url == @url')
+    url_time_df = url_time_df.set_index('url')
+    reg_time = pd.to_datetime(url_time_df.loc[url, 'register_date'])
+    reg_time = reg_time.strftime('%B') + ' ' + reg_time.strftime('%Y')
+    exp_time = pd.to_datetime(url_time_df.loc[url, 'expire_date'])
+    if datetime.now() < exp_time:
+        conj = 'has'
+        exp_time = 'present'
+    else: 
+        conj = 'was'
+        exp_time = pd.to_datetime(url_time_df.loc['url', 'expire_date'])
+        exp_time = exp_time.strftime('%B') + ' ' + exp_time.stftime('%Y')
+    if time_online:
+        insight = f"The website {conj} been online from {reg_time} to {exp_time}"
+    elif time_online:
+            insight = 'No website available'
+    return insight
+
+@app.callback(Output('insight-3', 'children'),
+             Input('business-name', 'value'))
+def website_online(business):
     
-    time_online = '356 days'
+    number_addresses = ''
     # business_df = df.query('BusinessName == @business')
     # domain_length = business_df.iloc[-1, 'time_online']
     if time_online:
@@ -209,8 +256,14 @@ def time_online(business):
     return insight
 
 
-
 def calculate_scores(business):
+
+    # has registered website
+    # longevity of website
+    # has more than 1 employee
+    # number of missing inputs 
+
+
     scores = ['green', 'green', 'green', 'red']
     return scores
 
@@ -242,21 +295,38 @@ def update_address(business):
     house = business_df.iloc[-1, 13]
     street = business_df.iloc[-1, 14]
     
-    
-    return str(int(house))+' ' +street
+    return str(int(house))+ ' ' +street
 
 @app.callback(Output("histogram", "figure"),
              [Input('feature_type', 'value'),
-             Input('business-name', 'value')])
-def plot_hist(xaxis, business):
+             Input('business-name', 'value'),
+             Input('std', 'value')])
+def plot_hist(xaxis, business,sd):
+    
     business_df = df.query('BusinessName == @business')
-    estimate = business_df.iloc[-1, -4] # use -4 for employees, -3 for FeesPaid
     type_value = business_df.iloc[0, 9]
 
-    xaxis = 'NumberofEmployees'
-    type_value = 'Office'
-    lower_thresh, upper_thresh, _ = within_thresh(estimate, type_value, xaxis, df, 1)
-    hist_data = df.query('BusinessType == @type_value').loc[:, xaxis]
+    if sd == '':
+        sd = 1
+
+    if xaxis == 'Fee Paid':
+        xaxis = 'FeePaid'
+        index = -3
+        estimate = business_df.iloc[-1, index] # use -4 for employees, -3 for FeesPaid
+        hist_data = df.query('BusinessType == @type_value').loc[:, xaxis]
+        lower_thresh, upper_thresh, _ = within_thresh(estimate, type_value, xaxis, df, sd)
+    elif xaxis == 'Number of Employees':
+        xaxis = 'NumberofEmployees'
+        index = -4
+        estimate = business_df.iloc[-1, index]
+        hist_data = df.query('BusinessType == @type_value').loc[:, xaxis]
+        lower_thresh, upper_thresh, _ = within_thresh(estimate, type_value, xaxis, df, sd)
+    elif xaxis == 'Total Fees Paid':
+        estimate = df.groupby('BusinessName').sum().loc[business, "FeePaid"]
+        hist_data = df.groupby('BusinessName').sum().loc[:, 'FeePaid']
+        lower_thresh, upper_thresh, _ = within_thresh(estimate, type_value, xaxis, df, sd)
+        xaxis = 'FeePaid'
+    print(xaxis)
     xrange = None
     fig = px.histogram(hist_data, x = xaxis,height=400)
     fig.update_xaxes(range=xrange)
@@ -279,115 +349,12 @@ def plot_hist(xaxis, business):
         )
     ])
     return fig
-            #fig.update_xaxes(tickangle=n_clicks*45)
-            
-
-        # dcc.Tab([
-        #     dbc.Row([
-        #         dbc.Col([
-        #             html.Br(),
-        #             html.Label([
-        #                 'State Selection'], style={
-        #         'color': '#522889', "font-weight": "bold"
-        #     }),
-        #             dcc.Dropdown(
-        #                 id='table_state',
-        #                 value='select your state',  
-        #                 options=[{'label': state, 'value': state} for state in df['state'].sort_values().unique()],
-        #                 multi=True,
-        #                 placeholder='Select a State'
-        #             ),
-        #             html.Br(),
-        #             html.Label(['Wine Type'], style={
-        #         'color': '#522889', "font-weight": "bold"
-        #     }
-        #             ),
-        #             dcc.Dropdown(
-        #                 id='table_variety',
-        #                 value='select a variety', 
-        #                 placeholder='Select a Variety', 
-        #                 multi=True
-        #             ),
-        #             html.Br(),
-        #             html.Label(['Price Range'], style={
-        #         'color': '#522889', "font-weight": "bold"
-        #     }
-        #             ),
-        #             dcc.RangeSlider(
-        #                 id='table_price',
-        #                 min=df['price'].min(),
-        #                 max=df['price'].max(),
-        #                 value=[df['price'].min(), df['price'].max()],
-        #                 marks = {4: '$4', 25: '$25', 50: '$50', 75: '$75', 100: '$100','color': '#7a4eb5'}
-        #             ),
-        #             html.Label(['Points Range'], style={
-        #         'color': '#522889', "font-weight": "bold"
-        #     }
-        #             ),
-                    
-        #             dcc.RangeSlider(
-        #                 id='table_points',
-        #                 min=df['points'].min(),
-        #                 max=df['points'].max(),
-        #                 value=[df['points'].min(), df['points'].max()],
-        #                 marks = {80: '80', 85: '85', 90: '90', 95: '95', 100: '100'}, className='slider'
-        #                 ),
-        #             html.Br(),
-        #             dbc.Button('Reset', id = 'reset-btn-2', n_clicks=0, className='reset-btn-2'),
-        #         ],style={'border': '1px solid', 'border-radius': 3, 'padding': 15, 'margin-top': 22, 'margin-bottom': 22, 'margin-right': 0}, md=4),
-        #         dbc.Col([
-        #             html.Br(),
-        #             html.Br(),
-        #             dash_table.DataTable(
-        #                 id='table',
-        #                 columns=[{"name": col, "id": col} for col in display_df.columns[:]], 
-        #                 data=display_df.to_dict('records'),
-        #                 page_size=10,
-        #                 sort_action='native',
-        #                 filter_action='native',
-        #                 style_header = {'textAlign': 'left'},
-        #                 style_data = {'textAlign': 'left'},
-        #                 style_cell_conditional=[
-        #                     {'if': {'column_id': 'Title'},
-        #                     'width': '50%'},
-        #                     {'if': {'column_id': 'Price'},
-        #                     'width': '9%'},
-        #                     {'if': {'column_id': 'Points'},
-        #                     'width': '10%'}],
-        #                 style_cell={
-        #                     'overflow': 'hidden',
-        #                     'textOverflow': 'ellipsis',
-        #                     'maxWidth': 0
-        #                 },
-        #             ),
-        #         ], md=8)
-        #     ]),
-        #     dbc.Row([
-        #         dbc.Col([
-        #             html.Br(),
-        #             html.Iframe(
-        #                 id = 'table_plots',
-        #                 style={'border-width': '0', 'width': '100%', 'height': '600px'})]),
-        #         dbc.Col([
-        #         dcc.Dropdown(
-        #                 id='axis',
-        #                 value='price',  
-        #                 options=[{'label': "price", 'value': "price"}, 
-        #                 {'label': "points", 'value': "points"}]
-        #         ),
-        #         html.Iframe(
-        #                 id = 'heat_plot',
-        #                 style={'border-width': '0', 'width': '100%', 'height': '100%'})])
-        #         ])     
-        # ],label='Data')]),
-
-    
 
 
-
-
-
-
+# last year that they gave info to public 
+# number of employees
+# operating revenue 
+# glassdoor presence
 
 
 
