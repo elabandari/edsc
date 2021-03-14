@@ -15,20 +15,25 @@ import json
 import datetime
 import time
 
+
 def add_one_job():
     # Get SQL credentials and connect
-    with open('connection.json') as f:
+    with open("connection.json") as f:
         db = json.load(f)
 
-    conn = psycopg2.connect(database=db['dbname'], user=db['user'], password=db['password'], host=db['host'])
+    conn = psycopg2.connect(
+        database=db["dbname"], user=db["user"], password=db["password"], host=db["host"]
+    )
 
     try:
         # Get A company name that we haven't scrapped yet so that we could scrape it!
         with conn, conn.cursor() as cur:
-            cur.execute("""SELECT id_mapping.businessname
+            cur.execute(
+                """SELECT id_mapping.businessname
             FROM public.id_mapping
             LEFT JOIN public.jobbank_employer_posting ON jobbank_employer_posting.business_name = id_mapping.businessname
-            WHERE jobbank_employer_posting.business_name IS NULL ORDER BY RANDOM() LIMIT 1""")
+            WHERE jobbank_employer_posting.business_name IS NULL ORDER BY RANDOM() LIMIT 1"""
+            )
             for company_name in cur.fetchall():
                 company_name_scrape = company_name[0]
 
@@ -41,14 +46,14 @@ def add_one_job():
             sql_code = """ INSERT INTO public.jobbank_employer_posting(business_name,num_postings)
             VALUES(%s,%s)"""
             with conn, conn.cursor() as cur:
-                cur.execute(sql_code,(company_name,num))
+                cur.execute(sql_code, (company_name, num))
                 conn.commit()
                 # Print a Success Message
-                print(f"Added Company Name {company_name_scrape} with Job posting numbers of {num}")
-        
+                print(
+                    f"Added Company Name {company_name_scrape} with Job posting numbers of {num}"
+                )
 
     except Exception as e:
         # Print error message if the code above fails
         print("Error in jobpostadder.")
         print(e)
-
