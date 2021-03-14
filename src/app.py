@@ -238,9 +238,14 @@ app.layout = dbc.Container([
 def url_presence(business):
     try:
         website = registered_url_df[registered_url_df['businessname'] == business].url.iat[0]
+        if website is None:
+            raise IndexError('none')
         return f"{website}"
     except IndexError:
         try:
+            print(possible_url_df.head(1))
+            print(business)
+            print(possible_url_df[possible_url_df['businessname'] == business])
             possible_website = possible_url_df[possible_url_df['businessname'] == business].iloc[0]
             return f"{possible_website['url']} *estimate: {possible_website['prob']}% confident"
         except:
