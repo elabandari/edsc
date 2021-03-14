@@ -42,7 +42,6 @@ def within_thresh(value, businesstype, column, data, sd_away=1):
     mean = mean_df.loc[businesstype, column]
     sd = sd_df.loc[businesstype, column]
     
-    print(mean)
     upper_thresh = mean + sd_away*sd 
     lower_thresh = mean - sd_away*sd
 
@@ -63,100 +62,15 @@ app.server.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app.server)
 
-class Licence(db.Model):
-    __tablename__ = "license_data"
-
-    FolderYear = db.Column(db.Integer)
-    LicenceRSN = db.Column(db.Integer)
-    LicenceNUmber = db.Column(db.String(40))
-    LicenceRevisionNumber = db.Column(db.Integer)
-    BusinessName = db.Column(db.String(40))
-    BusinessTradeName = db.Column(db.String(40))
-    Status = db.Column(db.String(40))
-    IssuedDate = db.Column(db.String(40))
-    ExpiredDate = db.Column(db.String(40))
-    BusinessType = db.Column(db.String(40))
-    BusinessSubType = db.Column(db.String(40))
-    Unit = db.Column(db.String(40))
-    UnitType = db.Column(db.String(40))
-    House = db.Column(db.String(40))
-    Street = db.Column(db.String(40))
-    City = db.Column(db.String(40))
-    Province = db.Column(db.String(40))
-    Country = db.Column(db.String(40))
-    PostalCode = db.Column(db.String(40))
-    LocalArea = db.Column(db.String(40))
-    NumberOfEmployees = db.Column(db.Float)
-    FeePaid = db.Column(db.Float)
-    ExtractDate = db.Column(db.String(40))
-    Geom = db.Column(db.String(40))
-    Id = db.Column(db.Integer, nullable=False, primary_key=True)
-
-
-    def __init__(self, FolderYear, LicenceRSN, LicenceNUmber,LicenceRevisionNumber,BusinessName,BusinessTradeName,Status,IssuedDate,ExpiredDate,BusinessType,BusinessSubType,Unit,UnitType,House,Street,City,Province,Country,PostalCode,LocalArea,NumberOfEmployees,FeePaid,ExtractDate,Geom,Id):
-        FolderYear = self.FolderYear
-        LicenceRSN = self.LicenceRSN
-        LicenceNUmber = self.LicenceNUmber
-        LicenceRevisionNumber = self.LicenceRevisionNumber
-        BusinessName = self.BusinessName
-        BusinessTradeName = self.BusinessTradeName
-        Status = self.Status
-        IssuedDate = self.IssuedDate
-        ExpiredDate = self.ExpiredDate
-        BusinessType = self.BusinessType
-        BusinessSubType = self.BusinessSubType
-        Unit = self.Unit
-        UnitType = self.UnitType
-        House = self.House
-        Street = self.Street
-        City = self.City
-        Province = self.Province
-        Country = self.Country
-        PostalCode = self.PostalCode
-        LocalArea = self.LocalArea
-        NumberOfEmployees = self.NumberOfEmployees
-        FeePaid = self.FeePaid
-        ExtractDate = self.ExtractDate
-        Geom = self.Geom
-        Id = self.Id
-
 df = pd.read_sql_table('license_data', con=db.engine)
-
-class AddressQuantile(db.Model):
-    __tablename__ = 'address_quantiles'
-
-    BusinessType = db.Column(db.String(40), nullable=False, primary_key=True)
-    Quantile = db.Column(db.Float)
-
-    def __init__(self, BusinessType, Quantile):
-        self.BusinessType = BusinessType
-        self.Quantile = Quantile
-
 address_quantile_df = pd.read_sql_table('address_quantiles', con=db.engine)
-
-class AddressCounts(db.Model):
-    __tablename__ = 'address_counts'
-
-    BusinessType = db.Column(db.String(40), nullable=False, primary_key=True)
-    Count = db.Column(db.Integer)
-
-    def __init__(self, BusinessType, Count):
-        self.BusinessType = BusinessType
-        self.Count = Count
-
 address_count_df = pd.read_sql_table('address_counts', con=db.engine)
-
-class AddressFrequencies(db.Model):
-    __tablename__ = 'address_frequencies'
-
-    Address = db.Column(db.String(40), nullable=False, primary_key=True)
-    Frequency = db.Column(db.Integer)
-
-    def __init__(self, Address, Frequency):
-        self.Address = Address
-        self.Frequency = Frequency
-
 address_frequencies_df = pd.read_sql_table('address_frequencies', con=db.engine)
+registered_url_df = pd.read_sql_table('registered_urls', con=db.engine)
+possible_url_df = pd.read_sql_table('possible_urls', con=db.engine)
+url_info_df = pd.read_sql_table('url_info', con=db.engine)
+
+
 
 colors = {
     'background': "#00000",
@@ -229,7 +143,7 @@ app.layout = dbc.Container([
                     html.Label(['Search Url'], style={'color': '#0F5DB6', "font-weight": "bold"}),
                     dcc.Textarea(style={'width': '100%', 'height': 30}),
                     dbc.Button('Web Search', id = 'scrape-btn', n_clicks=0, className='reset-btn-1'),
-                    ], style={'border': '1px solid', 'border-radius': 3, 'padding': 15, 'margin-top': 22, 'margin-bottom': 15, 'margin-right': 0, 'height' : 350}, md=4,
+                    ], style={'border': '1px solid', 'border-radius': 3, 'margin-top': 22, 'margin-bottom': 15, 'margin-right': 0, 'height' : 350}, md=4,
                 ),
                 dbc.Col([], md=1),
                 dbc.Col([
@@ -244,35 +158,35 @@ app.layout = dbc.Container([
                              figure = {'layout': go.Layout(margin={'b': 0})})
                 ],)
 
-
-                # dbc.Col([
-                #         html.Br(),
-                #         html.Br(),
-                #         dbc.Row([create_card('card1', 'card 1 content')]),
-                #         dbc.Row([create_card('Card2','Card 2 Content')]),
-                #     ], md=2),
-                # dbc.Col([
-                #      html.Br(),
-                #      html.Br(),
-                #      dbc.Row([create_card('card3', 'card3 content')]),
-                #      dbc.Row([create_card('Card4','Card 4 Content')]),
-                #     ], md=4)
                 ]),
             dbc.Row([
                     dbc.Col([
-                        dbc.Card([
-                            dbc.CardHeader('Key Insights:', 
-                            style={'fontWeight': 'bold', 'color':'white','font-size': '22px', 'backgroundColor':'#0F5DB6', 'height': '50px'}),
-                            dbc.CardBody(id='insight-1', style={'color': '#2EC9F0', 'fontSize': 18,  'height': '70px'}),
-                            html.Br(),
-                            dbc.CardBody(id='insight-2', style={'color': '#522889', 'fontSize': 18,  'height': '380px'}),
-                            html.Br(),
-                            dbc.CardBody(id='insight-3', style={'color': '#522889', 'fontSize': 18,  'height': '380px'}),
-                            html.Br(),
-                            dbc.CardBody(id='insight-4', style={'color': '#522889', 'fontSize': 18,  'height': '380px'}),
+                        dbc.CardColumns([
+                            dbc.Card([
+                                dbc.CardHeader(html.H4('Website URL')),
+                                dbc.CardBody(id='insight-1'),
+                            ], color = 'primary', outline=True),
+                            dbc.Card([
+                                dbc.CardHeader(html.H4('Website Validity')),
+                                dbc.CardBody(id='insight-2')
+
+                            ], color = 'primary', outline=True),
+                            dbc.Card([
+                                dbc.CardHeader(html.H4('Website Uptime')),
+                                dbc.CardBody(id='insight-3'),
+                            ], color = 'primary', outline=True),
+                            dbc.Card([
+                                dbc.CardHeader(html.H4('Addresses Listed')),
+                                dbc.CardBody(id='insight-4'),
+                            ], color = 'primary', outline=True),
+                            dbc.Card([
+                                dbc.CardHeader(html.H4('Common Addresses')),
+                                dbc.CardBody(id='insight-5'),
+                            ], color = 'primary', outline=True)
+                            # dbc.CardHeader('Key Insights:', 
+                            # style={'fontWeight': 'bold', 'color':'white','font-size': '22px', 'backgroundColor':'#0F5DB6', 'height': '50px'}),
                         ]),
-                    ], md = 4),
-                    dbc.Col([], md = 2),
+                    ], md = 6),
                     dbc.Col([
                     dbc.Row([
                             dcc.Graph(id='histogram'),         
@@ -301,43 +215,42 @@ app.layout = dbc.Container([
 @app.callback(Output('insight-1', 'children'),
              Input('business-name', 'value'))
 def url_presence(business):
-    website = 'www.google.com'
-    # business_df = df.query('BusinessName == @business')
-    # website = business_df.iloc[-1, 'website']
-    if website:
-        insight = f"Website: {website}"
-    if website:
-        insight = 'No website available'
-    return insight
+    try:
+        website = registered_url_df[registered_url_df['businessname'] == business].url.iat[0]
+        return f"{website}"
+    except IndexError:
+        try:
+            possible_website = possible_url_df[possible_url_df['businessname'] == business].iloc[0]
+            return f"{possible_website['url']} *estimate: {possible_website['prob']}% confident"
+        except:
+            return f"No website found"
 
 @app.callback(Output('insight-2', 'children'),
              Input('business-name', 'value'))
 def time_online(business):
-    toy1 = {'BusinessName':"Time Education Inc", 'url' : 'www.google.ca'}
-    toy2 = {'url' : 'www.google.ca', 'register_date' : '1999-01-02', 'expire_date': '2022-09-29'}
-
-    url_df = pd.DataFrame(toy1, index=[1])
-    url_info = pd.DataFrame(toy2, index=[1])
-
-    filtered_url_df = url_df.query('BusinessName == @business')
-    url = url_df.loc[1, 'url']
-    url_time_df =url_info.query('url == @url')
-    url_time_df = url_time_df.set_index('url')
-    reg_time = pd.to_datetime(url_time_df.loc[url, 'register_date'])
-    reg_time = reg_time.strftime('%B') + ' ' + reg_time.strftime('%Y')
-    exp_time = pd.to_datetime(url_time_df.loc[url, 'expire_date'])
-    if datetime.now() < exp_time:
-        conj = 'has'
-        exp_time = 'present'
-    else: 
-        conj = 'was'
-        exp_time = pd.to_datetime(url_time_df.loc['url', 'expire_date'])
-        exp_time = exp_time.strftime('%B') + ' ' + exp_time.stftime('%Y')
-    if time_online:
-        insight = f"The website {conj} been online from {reg_time} to {exp_time}"
-    elif time_online:
-            insight = 'No website available'
-    return insight
+    try :
+        filtered_url_df = registered_url_df[registered_url_df['businessname'] == business]
+        url = filtered_url_df['url'].iat[0]
+        print(url)
+        url_time_df =url_info_df[url_info_df['url'] == url]
+        url_time_df = url_time_df.set_index('url')
+        reg_time = pd.to_datetime(url_time_df.loc[url, 'register_date'])
+        reg_time = reg_time.strftime('%B') + ' ' + reg_time.strftime('%Y')
+        exp_time = pd.to_datetime(url_time_df.loc[url, 'expire_date'])
+        if datetime.now() < exp_time:
+            conj = 'has'
+            exp_time = 'present'
+        else: 
+            conj = 'was'
+            exp_time = pd.to_datetime(url_time_df.loc['url', 'expire_date'])
+            exp_time = exp_time.strftime('%B') + ' ' + exp_time.stftime('%Y')
+        if time_online:
+            insight = f"The website {conj} been online from {reg_time} to {exp_time}"
+        elif time_online:
+                insight = 'No website available'
+        return insight
+    except (KeyError, IndexError):
+        return 'No website information available'
 
 @app.callback(Output('insight-3', 'children'),
              Input('business-name', 'value'))
@@ -352,7 +265,7 @@ def website_online(business):
         insight = 'No website available'
     return insight
 
-@app.callback(Output('insight-3', 'children'),
+@app.callback(Output('insight-4', 'children'),
             Input('business-name', 'value'))
 def address_quantile(business):
     count = address_count_df[address_count_df.BusinessName == business].full_adress.iat[0]
@@ -364,7 +277,7 @@ def address_quantile(business):
     else:
         return f"This business has {count} addresses."
 
-@app.callback(Output('insight-4', 'children'),
+@app.callback(Output('insight-5', 'children'),
             Input('business-name', 'value'))
 def address_frequency(business):
     address = df[df.businessname == business].iloc[0]
@@ -415,7 +328,7 @@ def update_address(business):
     house = business_df.iloc[-1, 13]
     street = business_df.iloc[-1, 14]
     
-    return str(int(house))+ ' ' +street
+    return str(int(float(house)))+ ' ' +street
 
 @app.callback(Output("histogram", "figure"),
              [Input('feature_type', 'value'),
@@ -425,7 +338,7 @@ def plot_hist(xaxis, business,sd):
 
     xrange = None
     ci_color = 'black'
-    business_df = df.query('BusinessName == @business')
+    business_df = df.query('businessname == @business')
     type_value = business_df.iloc[0, 9]
 
     if sd == '':
@@ -449,7 +362,6 @@ def plot_hist(xaxis, business,sd):
         hist_data = df.groupby('BusinessName').sum().loc[:, 'FeePaid']
         lower_thresh, upper_thresh, _ = within_thresh(estimate, type_value, xaxis, df, sd)
         xaxis = 'FeePaid'
-        print(xaxis)
         xrange=[0, 15000]
 
     elif xaxis == 'Missing Values':
