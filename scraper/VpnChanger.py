@@ -40,6 +40,11 @@ class VpnChanger:
 
     def trychangevpn(self):
         try:
+            # Change mac address. Uncomment to use. Code below needs more testing:
+            # os.popen('tmac -n YourNetowrkconnection -rm")
+            # My own connection
+            # os.popen('tmac -n Ethernet 9 -rm")
+            
             # disconnect any vpn connections
             os.popen('"C:/Program Files/NordVPN/NordVPN.exe" -d')
             time.sleep(10)
