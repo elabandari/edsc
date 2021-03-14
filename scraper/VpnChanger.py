@@ -1,7 +1,4 @@
-import pyautogui
 import time
-import cv2
-import numpy as np
 import subprocess
 import os
 
