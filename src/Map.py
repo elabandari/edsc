@@ -6,12 +6,84 @@ import altair as alt
 from vega_datasets import data
 import pandas as pd
 
-alt.data_transformers.disable_max_rows()
-df = pd.read_csv('../data/processed/cleaned_data.csv')
-df = df.query('country == "US" ') 
+from flask_sqlalchemy import SQLAlchemy
+from flask import Flask
+
+# alt.data_transformers.disable_max_rows()
+# df = pd.read_csv('../data/processed/cleaned_data.csv')
+# df = df.query('country == "US" ') 
 
 # Setup app and layout/frontend
-app = dash.Dash(__name__,  external_stylesheets=['https://codepen.io/chriddyp/pen/bWLwgP.css'])
+
+server = Flask(__name__)
+app = dash.Dash(__name__,server=server,  external_stylesheets=['https://codepen.io/chriddyp/pen/bWLwgP.css'])
+app.server.config['SQLALCHEMY_DATABASE_URI'] = "postgres+psycopg2://postgres:one-percent@130.211.113.135:5432/postgres"
+
+db = SQLAlchemy(app.server)
+
+
+class Licence(db.Model):
+    __tablename__ = "license_data"
+
+    FolderYear = db.Column(db.Integer)
+    LicenceRSN = db.Column(db.Integer)
+    LicenceNUmber = db.Column(db.String(40))
+    LicenceRevisionNumber = db.Column(db.Integer)
+    BusinessName = db.Column(db.String(40))
+    BusinessTradeName = db.Column(db.String(40))
+    Status = db.Column(db.String(40))
+    IssuedDate = db.Column(db.String(40))
+    ExpiredDate = db.Column(db.String(40))
+    BusinessType = db.Column(db.String(40))
+    BusinessSubType = db.Column(db.String(40))
+    Unit = db.Column(db.String(40))
+    UnitType = db.Column(db.String(40))
+    House = db.Column(db.String(40))
+    Street = db.Column(db.String(40))
+    City = db.Column(db.String(40))
+    Province = db.Column(db.String(40))
+    Country = db.Column(db.String(40))
+    PostalCode = db.Column(db.String(40))
+    LocalArea = db.Column(db.String(40))
+    NumberOfEmployees = db.Column(db.Float)
+    FeePaid = db.Column(db.Float)
+    ExtractDate = db.Column(db.String(40))
+    Geom = db.Column(db.String(40))
+    Id = db.Column(db.Integer, nullable=False, primary_key=True)
+
+
+    def __init__(self, FolderYear, LicenceRSN, LicenceNUmber,LicenceRevisionNumber,BusinessName,BusinessTradeName,Status,IssuedDate,ExpiredDate,BusinessType,BusinessSubType,Unit,UnitType,House,Street,City,Province,Country,PostalCode,LocalArea,NumberOfEmployees,FeePaid,ExtractDate,Geom,Id):
+        Id = self.Id
+        FolderYear = self.FolderYear
+        LicenceRSN = self.LicenceRSN
+        LicenceNUmber = self.LicenceNUmber
+        LicenceRevisionNumber = self.LicenceRevisionNumber
+        BusinessName = self.BusinessName
+        BusinessTradeName = self.BusinessTradeName
+        Status = self.Status
+        IssuedDate = self.IssuedDate
+        ExpiredDate = self.ExpiredDate
+        BusinessType = self.BusinessType
+        BusinessSubType = self.BusinessSubType
+        Unit = self.Unit
+        UnitType = self.UnitType
+        House = self.House
+        Street = self.Street
+        City = self.City
+        Province = self.Province
+        Country = self.Country
+        PostalCode = self.PostalCode
+        LocalArea = self.LocalArea
+        NumberOfEmployees = self.NumberOfEmployees
+        FeePaid = self.FeePaid
+        ExtractDate = self.ExtractDate
+        Geom = self.Geom
+        Id = self.Id
+
+df = pd.read_sql_table('license_data', con=db.engine)
+
+print(df.columns)
+
 app.layout = html.Div([
     html.Iframe(
         id='map',
@@ -43,17 +115,18 @@ app.layout = html.Div([
     Input('price', 'value'),
     Input('points', 'value'))
 def plot_altair(selected_province, price_value, points_value):
+    
     if selected_province == 'Select your province':
         df_filtered = df
     else:
-        df_filtered = df[df['state'] == selected_province]
+        df_filtered = df[df['Province'] == selected_province]
 
     state_map = alt.topo_feature(data.us_10m.url, 'states')
-    df_filtered = df_filtered[(df_filtered['price'] >= min(price_value)) & (df_filtered['price'] <= max(price_value))]
-    df_filtered = df_filtered[(df_filtered['points'] >= min(points_value)) & (df_filtered['points'] <= max(points_value))]
+    df_filtered = df_filtered[(df_filtered['NumberofEmployees'] >= min(price_value)) & (df_filtered['NumberofEmployees'] <= max(price_value))]
+    df_filtered = df_filtered[(df_filtered['FeePaid'] >= min(points_value)) & (df_filtered['FeePaid'] <= max(points_value))]
     states_grouped = df_filtered.groupby(['state', 'state_id'], as_index=False)
-    wine_states = states_grouped.agg({'points': ['mean'],
-                                      'price': ['mean'],
+    wine_states = states_grouped.agg({'FeePaid': ['mean'],
+                                      'NumberofEmployees': ['mean'],
                                       'value': ['mean'],
                                       'description': ['count']})
 
