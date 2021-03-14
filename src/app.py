@@ -14,10 +14,15 @@ from flask_sqlalchemy import SQLAlchemy
 from flask import Flask
 from scipy import stats
 
+import plotly.io as pio
+
+# pio.templates.default = "simple_white"
+
+
 alt.data_transformers.disable_max_rows()
 
 ########## Additional Data Filtering ###########################################
-df = pd.read_csv('data/processed/business_data.csv', sep=';') #data/processed/cleaned_data.csv
+# df = pd.read_csv('data/processed/business_data.csv', sep=';') #data/processed/cleaned_data.csv
 
 ###############################################################################
 
@@ -118,7 +123,7 @@ def toggle_collapse(n, is_open):
 app.layout = dbc.Container([
     dbc.Row([
         dbc.Col([
-            html.H1('Fraudulent Buisness Detection', style={'text-align': 'center', 'color': 'white', 'font-size': '40px', 'font-family': 'Georgia'}),
+            html.H1('Fraudulent Business Detection', style={'text-align': 'center', 'color': 'white', 'font-size': '40px', 'font-family': 'Georgia'}),
             dbc.Collapse(html.P(
                 """
                 The dashboard will help you with your wine shopping today. Whether you desire crisp Californian Chardonnay or bold Cabernet Sauvignon from Texas, simply select a state and the wine type. The results will help you to choose the best wine for you.
@@ -157,17 +162,17 @@ app.layout = dbc.Container([
                     dbc.Button('Web Search', id = 'scrape-btn', n_clicks=0, className='reset-btn-1'),
                     ], style={'border': '1px solid', 'border-radius': 3, 'margin-top': 22, 'margin-bottom': 15, 'margin-right': 0, 'height' : 350}, md=4,
                 ),
-                dbc.Col([], md=1),
-                dbc.Col([
-                    html.Br(),
-                    html.Br(),
-                    dbc.Row([dbc.Card([
-                        dbc.CardHeader('Features Beyond 1-SD away from mean'),
-                        dbc.CardBody(id='score', style={'color': '#0F5DB6', 'fontSize': 18,  'height': '70px'}),
-                    ]
-                    )]),
-                    html.Br(),
-                ], md = 2),
+                # dbc.Col([], md=1),
+                # dbc.Col([
+                #     html.Br(),
+                #     html.Br(),
+                #     dbc.Row([dbc.Card([
+                #         dbc.CardHeader('Features Beyond 1-SD away from mean'),
+                #         dbc.CardBody(id='score', style={'color': '#0F5DB6', 'fontSize': 18,  'height': '70px'}),
+                #     ]
+                #     )]),
+                #     html.Br(),
+                # ], md = 2),
                 dbc.Col([
                     dcc.Graph(id='pie-chart',
                              figure = {'layout': go.Layout(margin={'b': 0})})
@@ -176,6 +181,7 @@ app.layout = dbc.Container([
                 ]),
             dbc.Row([
                     dbc.Col([
+                        html.Br(),
                         dbc.CardColumns([
                             dbc.Card([
                                 dbc.CardHeader(html.H4('Website URL')),
@@ -187,8 +193,8 @@ app.layout = dbc.Container([
 
                             ], color = 'primary', outline=True),
                             dbc.Card([
-                                dbc.CardHeader(html.H4('Website Uptime')),
-                                dbc.CardBody(id='insight-3'),
+                                dbc.CardHeader('Features Beyond 1-SD away from mean'),
+                                dbc.CardBody(id='score'),
                             ], color = 'primary', outline=True),
                             dbc.Card([
                                 dbc.CardHeader(html.H4('Addresses Listed')),
@@ -201,7 +207,7 @@ app.layout = dbc.Container([
                             # dbc.CardHeader('Key Insights:', 
                             # style={'fontWeight': 'bold', 'color':'white','font-size': '22px', 'backgroundColor':'#0F5DB6', 'height': '50px'}),
                         ]),
-                    ], md = 6),
+                    ], md = 6, style={'border': '1px solid', 'border-radius': 3, 'margin-top': 22, 'margin-bottom': 15, 'margin-right': 0}),
                     dbc.Col([
                     dbc.Row([
                             dcc.Graph(id='histogram'),         
@@ -267,18 +273,18 @@ def time_online(business):
     except (KeyError, IndexError):
         return 'No website information available'
 
-@app.callback(Output('insight-3', 'children'),
-             Input('business-name', 'value'))
-def website_online(business):
+# @app.callback(Output('insight-3', 'children'),
+#              Input('business-name', 'value'))
+# def website_online(business):
     
-    number_addresses = ''
-    # business_df = df.query('BusinessName == @business')
-    # domain_length = business_df.iloc[-1, 'time_online']
-    if time_online:
-        insight = f"The website has been online: {time_online}"
-    if time_online:
-        insight = 'No website available'
-    return insight
+#     number_addresses = ''
+#     # business_df = df.query('BusinessName == @business')
+#     # domain_length = business_df.iloc[-1, 'time_online']
+#     if time_online:
+#         insight = f"The website has been online: {time_online}"
+#     if time_online:
+#         insight = 'No website available'
+#     return insight
 
 @app.callback(Output('insight-4', 'children'),
             Input('business-name', 'value'))
@@ -296,13 +302,17 @@ def address_quantile(business):
             Input('business-name', 'value'))
 def address_frequency(business):
     address = df[df.businessname == business].iloc[0]
-    address_text  = ' '.join(address[['House', 'Street', 'City', 'Province','Country','PostalCode']])
-    address_f = address_frequencies_df[address_frequencies_df.full_adress == address_text]['BusinessName'].iat[0]
+    address_text  = ' '.join(filter(None, address[['House', 'Street', 'City', 'Province','Country','PostalCode']]))
 
-    if stats.percentileofscore(address_frequencies_df.BusinessName.values, address_f) >= 99:
-        return f'This address has {address_f} businesses listed at it. That is in the top 1%'
-    else:
-        return f'This address has {address_f} businesses listed at it'
+    try: 
+        address_f = address_frequencies_df[address_frequencies_df.full_adress == address_text]['BusinessName'].iat[0]
+
+        if stats.percentileofscore(address_frequencies_df.BusinessName.values, address_f) >= 99:
+            return f'This address has {address_f} businesses listed at it. That is in the top 1%'
+        else:
+            return f'This address has {address_f} businesses listed at it'
+    except IndexError:
+        return f'No addresses for this business'
 
 def calculate_scores(business):
     business = 'Time Education Inc'
@@ -381,20 +391,10 @@ def plot_donut(score, business):
              [Input('business-name', 'value')])
 def update_address(business):
     
-    business_df = df.query('businessname == @business')
-    if business_df.iloc[-1, 13] == business_df.iloc[-1, 13]:
-        house = str(int(float(business_df.iloc[-1, 13])))
-    else: 
-        house = ''
-    if business_df.iloc[-1, 14] == business_df.iloc[-1, 14]:
-        street = str(business_df.iloc[-1, 14])
-    else: 
-        street = ''
-        
-    if business_df.iloc[-1, 11] == business_df.iloc[-1, 11]:
-        house = business_df.iloc[-1, 11] + " " + house
+    address = df[df.businessname == business].iloc[0]
+    address_text  = ' '.join(filter(None, address[['House', 'Street', 'City', 'Province','Country','PostalCode']]))
     
-    return  house + ' ' + street
+    return  address_text
 
 @app.callback(Output("histogram", "figure"),
              [Input('feature_type', 'value'),
@@ -425,7 +425,6 @@ def plot_hist(xaxis, business,sd):
         xaxis = 'NumberofEmployees'
         index = -5
         estimate = business_df.iloc[-1, index]
-        print(business_df.iloc[:, 7:].head(5))
         hist_data = df.query('BusinessType == @type_value').loc[:, xaxis]
         lower_thresh, upper_thresh, _ = within_thresh(estimate, type_value, xaxis, df, sd)
         xrange=[0, upper_thresh*1.25]
