@@ -11,6 +11,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 from flask_sqlalchemy import SQLAlchemy
 from flask import Flask
+from scipy import stats
 
 alt.data_transformers.disable_max_rows()
 
@@ -82,7 +83,6 @@ class Licence(db.Model):
 
 
     def __init__(self, FolderYear, LicenceRSN, LicenceNUmber,LicenceRevisionNumber,BusinessName,BusinessTradeName,Status,IssuedDate,ExpiredDate,BusinessType,BusinessSubType,Unit,UnitType,House,Street,City,Province,Country,PostalCode,LocalArea,NumberOfEmployees,FeePaid,ExtractDate,Geom,Id):
-        Id = self.Id
         FolderYear = self.FolderYear
         LicenceRSN = self.LicenceRSN
         LicenceNUmber = self.LicenceNUmber
@@ -111,8 +111,41 @@ class Licence(db.Model):
 
 df = pd.read_sql_table('license_data', con=db.engine)
 
-print(df.columns)
+class AddressQuantile(db.Model):
+    __tablename__ = 'address_quantiles'
 
+    BusinessType = db.Column(db.String(40), nullable=False, primary_key=True)
+    Quantile = db.Column(db.Float)
+
+    def __init__(self, BusinessType, Quantile):
+        self.BusinessType = BusinessType
+        self.Quantile = Quantile
+
+address_quantile_df = pd.read_sql_table('address_quantiles', con=db.engine)
+
+class AddressCounts(db.Model):
+    __tablename__ = 'address_counts'
+
+    BusinessType = db.Column(db.String(40), nullable=False, primary_key=True)
+    Count = db.Column(db.Integer)
+
+    def __init__(self, BusinessType, Count):
+        self.BusinessType = BusinessType
+        self.Count = Count
+
+address_count_df = pd.read_sql_table('address_counts', con=db.engine)
+
+class AddressFrequencies(db.Model):
+    __tablename__ = 'address_frequencies'
+
+    Address = db.Column(db.String(40), nullable=False, primary_key=True)
+    Frequency = db.Column(db.Integer)
+
+    def __init__(self, Address, Frequency):
+        self.Address = Address
+        self.Frequency = Frequency
+
+address_frequencies_df = pd.read_sql_table('address_frequencies', con=db.engine)
 
 colors = {
     'background': "#00000",
@@ -222,6 +255,10 @@ app.layout = dbc.Container([
                             dbc.CardBody(id='insight-1', style={'color': '#2EC9F0', 'fontSize': 18,  'height': '70px'}),
                             html.Br(),
                             dbc.CardBody(id='insight-2', style={'color': '#522889', 'fontSize': 18,  'height': '380px'}),
+                            html.Br(),
+                            dbc.CardBody(id='insight-3', style={'color': '#522889', 'fontSize': 18,  'height': '380px'}),
+                            html.Br(),
+                            dbc.CardBody(id='insight-4', style={'color': '#522889', 'fontSize': 18,  'height': '380px'}),
                         ]),
                     ], md = 4),
                     dbc.Col([], md = 2),
@@ -268,7 +305,29 @@ def time_online(business):
         insight = 'No website available'
     return insight
 
+@app.callback(Output('insight-3', 'children'),
+            Input('business-name', 'value'))
+def address_quantile(business):
+    count = address_count_df[address_count_df.BusinessName == business].full_adress.iat[0]
+    biztype = df[df.businessname == business].BusinessType.iloc[0]
+    quantile = address_quantile_df[address_quantile_df.BusinessType == biztype]['quantile'].iat[0]
 
+    if count >= quantile:
+        return f"This business has {count} addresses. This is in the top 1% in the {biztype} category"
+    else:
+        return f"This business has {count} addresses."
+
+@app.callback(Output('insight-4', 'children'),
+            Input('business-name', 'value'))
+def address_frequency(business):
+    address = df[df.businessname == business].iloc[0]
+    address_text  = ' '.join(address[['House', 'Street', 'City', 'Province','Country','PostalCode']])
+    address_f = address_frequencies_df[address_frequencies_df.full_adress == address_text]['BusinessName'].iat[0]
+
+    if stats.percentileofscore(address_frequencies_df.BusinessName.values, address_f) >= 99:
+        return f'This address has {address_f} businesses listed at it. That is abnormally high'
+    else:
+        return f'This address has {address_f} businesses listed at it'
 
 def calculate_scores(business):
     scores = ['green', 'green', 'green', 'red']
@@ -303,7 +362,7 @@ def update_address(business):
     street = business_df.iloc[-1, 14]
     
     
-    return str(int(house))+' ' +street
+    return str(float(house))+' ' +street
 
 @app.callback(Output("histogram", "figure"),
              [Input('feature_type', 'value'),
