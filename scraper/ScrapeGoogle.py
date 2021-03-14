@@ -1,6 +1,11 @@
 # Author : Kevin Shahnazari
 # Date: March 12th 2021
 
+"""
+This script Scrapes the information
+from the google website and returns the result 
+"""
+
 import requests
 from bs4 import BeautifulSoup
 import random
@@ -21,12 +26,14 @@ class GoogleScraper:
         # Ignore
         # ua = UserAgent()
         # Agent = ua.random
+
         # Get the website
 
         headers = {"user-agent": Agent}
         r = requests.get(url, headers=headers)
+        # Check if the request got through
         if r.status_code != 200:
-            print("DETECTED")
+            print("Google Detected! Change VPN and MAC")
             return -1
         soup = BeautifulSoup(r.text, "lxml")
 
@@ -38,6 +45,8 @@ class GoogleScraper:
             # skip maps
             if "maps.google" in l["href"]:
                 continue
+            # Clean the string for Case 1 and validate if it is a valid url link
+            # If valid return
             final_str = self.str_clean1(l["href"])
             if final_str != "" and self.site_online(final_str):
                 return final_str
@@ -46,6 +55,8 @@ class GoogleScraper:
         ll = soup.findAll("span", attrs={"class": "r0bn4c rQMQod"})
         if len(ll) != 0:
             final_str = self.str_clean2(ll[0].text)
+            # Clean the string for Case 2 and validate if it is a valid url link
+            # If valid return
             if final_str != "" and self.site_online(final_str):
                 return final_str
         # If nothing is found return none
@@ -62,22 +73,28 @@ class GoogleScraper:
         # Get the website
         headers = {"user-agent": Agent}
         r = requests.get(url, headers=headers)
+        # Check if the request got through
         if r.status_code != 200:
-            print("DETECTED")
+            print("Google Detected! Change VPN and MAC")
             return -1
         soup = BeautifulSoup(r.text, "lxml")
 
         counter = 0
+        # Get all URLS shown by the search result
         links = soup.findAll("div", attrs={"class": "BNeawe UPmit AP7Wnd"})
 
         final_links = []
         for link in links:
+            # Clean the string and validate if it is a valid url link.
+            # if it is add to the links to return
             final_str = self.str_clean3(link.text)
             if final_str != "" and self.site_online(final_str):
                 final_links.append(self.str_clean3(link.text))
             counter += 1
+            # If we already scrapped the numbers we had to break
             if counter == n:
                 break
+        # return results
         return final_links
 
     def generate_url(self, company_name):
@@ -110,6 +127,7 @@ class GoogleScraper:
             return ""
 
     def site_online(self, url):
+        # Checks if a url is valid by sending a request
         try:
             ret = requests.head(f"http://www.{url}")
             return True

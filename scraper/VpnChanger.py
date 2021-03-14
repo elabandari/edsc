@@ -1,6 +1,11 @@
 # Author : Kevin Shahnazari
 # Date: March 12th 2021
 
+"""
+This script Scrapes Changes the IP using
+NordVPN to hide our IP address when scraping.
+"""
+
 import time
 import subprocess
 import os
